@@ -125,6 +125,7 @@ and `~/.claude`.
 | `sync-commands.sh` | generate `~/.local/bin` commands |
 | `remove-instance.sh` | remove one instance (or an orphan), optionally its data |
 | `render-banner.swift` | regenerates `docs/banner.png` (`swift render-banner.swift docs/banner.png`) |
+| `LICENSE` | MIT |
 
 ## Idempotency
 
@@ -210,6 +211,10 @@ Claude Code reads `<cwd>/.claude/settings.json` as *project* settings. In your
 home directory that resolves to `~/.claude/settings.json` — the personal
 profile's own config — so any instance launched from `~` picks up personal's
 permissions as project settings. `cd` into a real project first.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## Verifying
 
