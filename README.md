@@ -12,14 +12,20 @@ specific organisation, and nothing depends on where this directory lives, so it
 can be moved, copied to another machine, or committed to git.
 
 `instances.conf` is gitignored — slugs and organisation names are private to a
-machine. On a fresh clone, start from the tracked example:
+machine. On a fresh clone, one command does the whole setup:
 
 ```bash
-cp instances.conf.example instances.conf   # then edit
-claude-sync
+./install.sh
 ```
 
-The scripts point you at this if the file is missing.
+The first run copies `instances.conf.example` to `instances.conf` and stops, so
+you can put your own organisations in it. Run it again and it generates the
+`~/.local/bin` commands and builds every app the config defines. It never builds
+from the example — those rows are placeholders.
+
+After that first run the command is on your PATH as `claude-install`, and
+re-running it is safe: apps that already exist are skipped unless you pass
+`--force`. `--check` reports what it would do and changes nothing.
 
 The default `/Applications/Claude.app` and `~/.claude` are the personal profile.
 This tooling never modifies them.
@@ -60,6 +66,7 @@ Generated into `~/.local/bin` by `claude-sync`.
 
 | Command | Does |
 |---|---|
+| `claude-install` | set up everything the config defines (`--check`, `--force`) |
 | `claude-instances` | list every instance and its current state |
 | `claude-<slug>` | run the CLI under that instance's config dir |
 | `claude-<slug>-app` | open that instance's desktop app |
@@ -74,8 +81,14 @@ Generated into `~/.local/bin` by `claude-sync`.
 Edit `instances.conf`, then:
 
 ```bash
+claude-install           # refresh commands, build whatever is missing
+```
+
+Or do the two halves separately, which is what `claude-install` calls:
+
+```bash
 claude-sync              # refresh ~/.local/bin commands
-claude-rebuild <slug>    # build the app, for a new instance
+claude-rebuild <slug>    # build one app
 ```
 
 ## Removing an instance
@@ -116,6 +129,7 @@ and `~/.claude`.
 |---|---|
 | `instances.conf` | the only place instances are defined (**gitignored**) |
 | `instances.conf.example` | tracked template to copy from |
+| `install.sh` | first-run setup: config, commands, then every missing app |
 | `lib.sh` | config parsing and shared helpers |
 | `rebuild-claude-org.sh` | clone, rebrand, re-sign and re-skin one app |
 | `set-claude-icon.sh` | icon only; much faster than a full rebuild |
@@ -144,6 +158,9 @@ state.
   `Claude.app`; when everything matches it changes nothing. `--check` is a pure
   dry run, `--force` rebuilds regardless.
 - `claude-remove` exits 0 with "nothing - already removed" when run again.
+- `claude-install` skips apps that already exist, so re-running it after adding a
+  row to `instances.conf` builds only the new one. It never overwrites an
+  existing `instances.conf`.
 
 ## Updating
 

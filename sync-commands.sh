@@ -32,6 +32,7 @@ done
 
 print "==> shared commands"
 for pair in \
+  "claude-install:install.sh" \
   "claude-rebuild:rebuild-claude-org.sh" \
   "claude-icon:set-claude-icon.sh" \
   "claude-update-all:update-all.sh" \
