@@ -1,0 +1,11 @@
+# Real instance definitions: organisation names and slugs are private to this
+# machine. Start from instances.conf.example instead.
+instances.conf
+# ...and its editor backups and copies, which the bare rule above would miss.
+instances.conf.*
+!instances.conf.example
+*.bak
+*.orig
+*~
+
+.DS_Store

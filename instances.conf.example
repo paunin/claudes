@@ -1,0 +1,32 @@
+# Claude instances - EXAMPLE
+#
+# Copy to instances.conf and edit:
+#
+#     cp instances.conf.example instances.conf
+#
+# instances.conf is gitignored, since slugs and organisation names are specific
+# to your machine. Keep this example generic when you change its format.
+#
+# One row per additional organisation. The default /Applications/Claude.app and
+# ~/.claude are NOT listed here - they are the personal profile and are never
+# touched by this tooling.
+#
+# Columns (whitespace separated):
+#
+#   slug    lowercase id. Drives ~/.claude-<slug>, the `claude-<slug>` command
+#           and the bundle id com.anthropic.claude.<slug>.
+#   label   short name. Drives "Claude <label>.app", the Electron helper names
+#           and the letters drawn on the icon. Keep it to 2-4 characters so it
+#           stays legible at 32px.
+#   hue     icon tint. 100 leaves Claude's orange unchanged; each step rotates
+#           the hue by 1.8 degrees, so 200 is the opposite side of the wheel.
+#           Handy values: 65 purple, 72 pink, 150 green, 200 blue, 250 magenta.
+#           Keep instances ~60 apart so they read differently.
+#   note    free text, ignored by the scripts.
+#
+# After editing run:  claude-sync
+# then `claude-rebuild <slug>` for any instance whose app does not exist yet.
+#
+# slug  label  hue  note
+acme    ACME   72   Acme Corp
+beta    BTA    200  Beta Industries
