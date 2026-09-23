@@ -66,7 +66,16 @@ cat > "$exe" <<EOF
 #!/bin/zsh
 APP_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 export CLAUDE_CONFIG_DIR="$CFG"
-exec "\$APP_DIR/Claude.real" --user-data-dir="$DATA" "\$@"
+# Normally this clone's own binary. With the marker file present, run the
+# original Anthropic-signed binary instead: same profile and same icon to click,
+# but entitlements intact, so remote session linking works. An ad-hoc signature
+# carries no entitlements, which is why the clone cannot do it.
+#   toggle with:  claude-signed $ORG on|off
+BIN="\$APP_DIR/Claude.real"
+if [[ -f "$CFG/.use-signed-binary" && -x "$MAIN_APP/Contents/MacOS/Claude" ]]; then
+  BIN="$MAIN_APP/Contents/MacOS/Claude"
+fi
+exec "\$BIN" --user-data-dir="$DATA" "\$@"
 EOF
 chmod +x "$exe"
 

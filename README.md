@@ -100,6 +100,7 @@ Generated into `~/.local/bin` by `claude-sync`.
 | `claude-rebuild <slug> [hue]` | rebuild one app from the current `Claude.app` |
 | `claude-icon <slug> [hue]` | re-skin an app without a full rebuild |
 | `claude-default [slug]` | choose which Claude opens `claude://` links |
+| `claude-signed [slug on\|off]` | run an instance with the original signed binary |
 | `claude-remove <slug>` | remove an instance: app, commands, config row (`--purge`) |
 | `claude-sync` | regenerate the commands after editing `instances.conf` |
 
@@ -167,6 +168,7 @@ and `~/.claude`.
 | `rebuild-claude-org.sh` | clone, rebrand, re-sign and re-skin one app |
 | `set-claude-icon.sh` | icon only; much faster than a full rebuild |
 | `set-default-handler.sh` | pick the app that opens `claude://` links |
+| `set-binary-mode.sh` | clone binary vs. the original signed one, per instance |
 | `url-handler.swift` | reads and sets a scheme's default app via LaunchServices |
 | `render-icon.swift` | tints and badges an `.iconset` (CoreImage + AppKit) |
 | `update-all.sh` | the three update tracks, in order |
@@ -276,19 +278,32 @@ What actually breaks in a clone:
 
 The escape hatch is to run the *original* signed binary against an instance's
 profile. Same config dir, same login, same history — only the executable differs,
-so the entitlements are intact:
+so the entitlements are intact. Either keep clicking the same Dock icon:
 
 ```bash
-claude-xpt-signed        # that profile, run by /Applications/Claude.app
+claude-signed            # show every instance's mode
+claude-signed xpt on     # that icon now launches /Applications/Claude.app
+claude-signed xpt off    # back to the clone's own binary
 ```
 
-The cost is cosmetic: the process belongs to `Claude.app`, so it shows up in the
-Dock and the app switcher as plain "Claude" with the untinted icon. Use the clone
-when you want to tell instances apart at a glance, and this when you need a
-feature the entitlements gate.
+or start it from the terminal for one session:
 
-Quit the clone first. One profile can only be open in one process — Electron
-locks the user-data dir.
+```bash
+claude-xpt-signed
+```
+
+The switch is a marker file in the instance's config dir, read by the launcher
+inside the app bundle, so flipping it needs no rebuild and no re-signing. An app
+built before the switch existed ignores it — `claude-signed` says so and tells you
+to run `claude-rebuild <slug>` once.
+
+The cost is cosmetic, and it is worth being precise about it: **launching** still
+works from the tinted icon, but the running process belongs to `Claude.app`.
+LaunchServices registers it as plain "Claude", so the Dock and the app switcher
+show the untinted icon while it runs, and two instances in signed mode look alike.
+
+One profile, one process: quit the instance before starting it the other way, as
+Electron locks the user-data dir.
 
 ## What is not isolated
 
