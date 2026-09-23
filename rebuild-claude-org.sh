@@ -94,6 +94,14 @@ codesign --verify --deep --strict "$DST" && print "signature OK"
 
 mkdir -p "$CFG" "$DATA"
 write_stamp "$ORG" "$LABEL"   # lets claude-remove find $DATA after the app is gone
+
+# A first build honours the machine's default mode; an instance that already has
+# a mode keeps it, so a rebuild never silently changes which binary you launch.
+if [[ "$DEFAULT_MODE" == "signed" && ! -f "$CFG/.use-signed-binary" && ! -f "$CFG/.mode-chosen" ]]; then
+  : > "$CFG/.use-signed-binary"
+  print "==> default mode: signed (CLAUDE_APPS_DEFAULT_MODE)"
+fi
+: > "$CFG/.mode-chosen"
 touch "$DST"
 lsregister -f "$DST"
 killall Dock 2>/dev/null || true

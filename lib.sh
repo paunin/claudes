@@ -11,6 +11,11 @@ typeset -ga INSTANCE_SLUGS
 
 CONF="$HERE/instances.conf"
 MAIN_APP="${CLAUDE_APPS_MAIN_APP:-/Applications/Claude.app}"
+# Which binary a newly built instance launches: 'clone' (its own, ad-hoc signed)
+# or 'signed' (the original, entitlements intact). Only ever applied when an
+# instance has no mode of its own yet - claude-signed stays authoritative after
+# that, and the marker it writes lives in the config dir, which a rebuild keeps.
+DEFAULT_MODE="${CLAUDE_APPS_DEFAULT_MODE:-clone}"
 
 die() { print -u2 "error: $*"; exit 1; }
 

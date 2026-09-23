@@ -44,6 +44,7 @@ Paths can be overridden if your setup differs:
 | `CLAUDE_APPS_MAIN_APP` | `/Applications/Claude.app` |
 | `CLAUDE_APPS_DIR` | `/Applications` (where clones are created) |
 | `CLAUDE_APPS_BIN` | `~/.local/bin` (where commands are installed) |
+| `CLAUDE_APPS_DEFAULT_MODE` | `clone` — set to `signed` to build new instances in signed mode |
 
 `claude-sync` warns if the command directory is not on your `PATH`.
 
@@ -293,7 +294,17 @@ claude-xpt-signed
 ```
 
 The switch is a marker file in the instance's config dir, read by the launcher
-inside the app bundle, so flipping it needs no rebuild and no re-signing. An app
+inside the app bundle, so flipping it needs no rebuild and no re-signing. The
+config dir survives rebuilds, so an instance keeps its mode across updates.
+
+To build every *new* instance in signed mode on a machine, export
+`CLAUDE_APPS_DEFAULT_MODE=signed`. It only ever applies to an instance that has
+no mode yet, so a rebuild never silently changes which binary you launch.
+
+Clone mode remains the default because signed mode costs the running icon and
+collides with launching the personal `Claude.app`. Pick per instance: signed
+where you need remote sessions or Microsoft SSO, clone where telling instances
+apart at a glance matters more. An app
 built before the switch existed ignores it — `claude-signed` says so and tells you
 to run `claude-rebuild <slug>` once.
 
@@ -305,11 +316,15 @@ show the untinted icon while it runs, and two instances in signed mode look alik
 One profile, one process: quit the instance before starting it the other way, as
 Electron locks the user-data dir.
 
-**A signed-mode instance and the personal `Claude.app` cannot be open at the same
-time.** In signed mode they are the same bundle, so launching the second one ends
-both — the log shows two `beforeQuit` sequences and you are left with neither.
-Quit one before opening the other. This does not affect clone-mode instances,
-which coexist with the personal app and with each other as they always have.
+Signed-mode instances **do** run side by side with each other — verified with two
+at once, each on its own profile. The one collision is the personal
+`/Applications/Claude.app` itself: launching it by its own icon while an instance
+holds that bundle's registration ends *both* processes (two `beforeQuit`
+sequences in the log, and you are left with neither). Clone-mode instances are
+unaffected and coexist with everything, as before.
+
+If you want the personal profile alongside signed instances, give it an instance
+row of its own rather than launching `Claude.app` directly.
 
 ## What is not isolated
 

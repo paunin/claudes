@@ -39,8 +39,10 @@ CFG="$(config_dir "$ORG")"
 mkdir -p "$CFG"
 
 case "${2:l}" in
-  on)  : > "$CFG/$MARK"; print "==> $ORG: signed mode - the icon now starts $MAIN_APP" ;;
-  off) rm -f "$CFG/$MARK"; print "==> $ORG: clone mode - the icon starts $(app_path "$ORG")" ;;
+  on)  : > "$CFG/$MARK"; : > "$CFG/.mode-chosen"
+       print "==> $ORG: signed mode - the icon now starts $MAIN_APP" ;;
+  off) rm -f "$CFG/$MARK"; : > "$CFG/.mode-chosen"
+       print "==> $ORG: clone mode - the icon starts $(app_path "$ORG")" ;;
   *)   die "expected 'on' or 'off', got '$2'" ;;
 esac
 
