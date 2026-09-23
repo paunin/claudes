@@ -30,6 +30,12 @@ re-running it is safe: apps that already exist are skipped unless you pass
 The default `/Applications/Claude.app` and `~/.claude` are the personal profile.
 This tooling never modifies them.
 
+Each instance runs in one of two modes — a ~1 MB **launcher** over the original
+signed app, or a full ~877 MB **clone**. The launcher keeps Anthropic's
+entitlements, so features like linking a remote session to this computer keep
+working; the clone gets you a tinted icon in the Dock while it runs. See
+[Two ways to run an instance](#two-ways-to-run-an-instance).
+
 ## Requirements
 
 macOS, the Claude desktop app, and the Xcode command line tools
@@ -50,16 +56,85 @@ Paths can be overridden if your setup differs:
 
 ## How isolation works
 
-Each instance gets two separate things, both set by a wrapper installed at
-`Contents/MacOS/Claude` inside its app bundle:
+Each instance gets two separate things, both set by the launcher installed at
+`Contents/MacOS/` inside its app bundle:
 
 - `CLAUDE_CONFIG_DIR=~/.claude-<slug>` — credentials, settings, skills, plugins
   and session history for the Code side.
 - `--user-data-dir=~/Library/Application Support/Claude-<label>` — the Electron
   app's own login, cookies and window state.
 
-Because the wrapper lives inside the bundle, the desktop apps need no shell
+Because the launcher lives inside the bundle, the desktop apps need no shell
 configuration at all. The `~/.local/bin` commands exist only for terminal use.
+
+## Two ways to run an instance
+
+The profile is the same either way. What differs is **which binary** the icon
+starts, and that turns out to decide which features work.
+
+| | **launcher** (signed) | **clone** |
+|---|---|---|
+| Runs | the original `/Applications/Claude.app` binary | its own copy, re-signed ad hoc |
+| Size on disk | ~1 MB | ~877 MB |
+| Entitlements | intact | **none** |
+| Remote session ↔ computer linking | works | fails |
+| Microsoft SSO, WebAuthn | work | fail |
+| Goes stale when Claude updates | never | needs `claude-rebuild` |
+| Icon while running | plain "Claude" | tinted and badged |
+| Personal `Claude.app` can be open too | only via `claude-personal` | yes |
+
+```bash
+claude-signed                  # show every instance's mode
+claude-signed xpt on           # switch to the signed binary
+claude-rebuild xpt             # rebuild as a ~1 MB launcher
+claude-signed xpt off && claude-rebuild xpt    # back to a clone
+```
+
+Mode is a marker file in the instance's config dir, which rebuilds preserve, so
+an instance keeps its mode across updates. `CLAUDE_APPS_DEFAULT_MODE=signed`
+makes new instances launchers; it only applies to an instance that has no mode
+yet, so a rebuild never silently changes which binary you launch.
+
+**Why a clone cannot do those things.** An ad-hoc signature carries no
+entitlements at all. The original is signed by Anthropic with
+`keychain-access-groups`, `application-identifier` and a team identifier only
+they can claim, and Apple's provisioning is what makes those valid — so
+re-signing here cannot reproduce them, and no macOS setting grants them. It is a
+property of the binary's signature, not a permission you approve. A clone that
+tries logs `remote_cowork.device_register_miss {"reason":"unavailable_entitlement"}`
+and the session reports *"Couldn't link this session to a computer, so attached
+folders can't be used."* Sessions started locally in the app are unaffected.
+
+**What launcher mode costs.** Launching still uses the tinted icon, but the
+running process belongs to `Claude.app`: LaunchServices registers it as plain
+"Claude", so the Dock and app switcher show the untinted icon and two launcher
+instances look alike while running.
+
+Launcher instances **do** run side by side with each other, each on its own
+profile. The one collision is the personal `/Applications/Claude.app` itself —
+launching it by its own icon while an instance holds that bundle's registration
+ends *both* processes. Hence the next section.
+
+## The personal profile
+
+The stock profile — `~/.claude` and `~/Library/Application Support/Claude` — is
+never touched by this tooling. But once any instance runs in launcher mode, the
+original `Claude.app` icon is the one thing you must stop clicking. Give the
+personal profile a launcher of its own instead:
+
+```bash
+claude-personal          # builds "Claude ME.app"; claude-personal XYZ to name it
+```
+
+About 1 MB, no clone, nothing large to re-sign. It runs the original binary with
+**no** profile flags, so it opens the same personal account, history and logins as
+`Claude.app` always did. Being its own bundle, it does not collide — verified
+running alongside two launcher instances at once.
+
+Put it in the Dock and take the original `Claude.app` out, so nothing is left to
+click that collides. Remove it with `rm -rf "/Applications/Claude ME.app"`; it is
+not an instance, so `claude-remove` does not manage it and `claude-update-all`
+does not count it as an orphan.
 
 ## Which Claude opens a link
 
@@ -83,8 +158,9 @@ A rebuild re-registers the bundle with LaunchServices, so check with
 `claude-default` afterwards if links start landing in the wrong app.
 
 The same collision applies to `msauth.com.anthropic.claudefordesktop`, the
-Microsoft SSO callback scheme — but ad-hoc signing already breaks Microsoft SSO
-in the clones, so it is moot there.
+Microsoft SSO callback scheme. It is moot for a clone, which cannot do Microsoft
+SSO at all, but it is real for launcher instances — point `claude-default` at the
+instance you are signing into.
 
 ## Commands
 
@@ -98,10 +174,10 @@ Generated into `~/.local/bin` by `claude-sync`.
 | `claude-<slug>-app` | open that instance's desktop app |
 | `claude-<slug>-signed` | open that profile with the original signed `Claude.app` |
 | `claude-update-all` | update the CLI, rebuild stale apps (`--check`, `--force`) |
-| `claude-rebuild <slug> [hue]` | rebuild one app from the current `Claude.app` |
+| `claude-rebuild <slug> [hue]` | rebuild one app: launcher or clone, per its mode |
 | `claude-icon <slug> [hue]` | re-skin an app without a full rebuild |
 | `claude-default [slug]` | choose which Claude opens `claude://` links |
-| `claude-signed [slug on\|off]` | run an instance with the original signed binary |
+| `claude-signed [slug on\|off]` | switch an instance between launcher and clone mode |
 | `claude-personal [label]` | build a Dock launcher for the personal profile |
 | `claude-remove <slug>` | remove an instance: app, commands, config row (`--purge`) |
 | `claude-sync` | regenerate the commands after editing `instances.conf` |
@@ -167,10 +243,10 @@ and `~/.claude`.
 | `instances.conf.example` | tracked template to copy from |
 | `install.sh` | first-run setup: config, commands, then every missing app |
 | `lib.sh` | config parsing and shared helpers |
-| `rebuild-claude-org.sh` | clone, rebrand, re-sign and re-skin one app |
+| `rebuild-claude-org.sh` | build one instance: a launcher, or a re-skinned clone |
 | `set-claude-icon.sh` | icon only; much faster than a full rebuild |
 | `set-default-handler.sh` | pick the app that opens `claude://` links |
-| `set-binary-mode.sh` | clone binary vs. the original signed one, per instance |
+| `set-binary-mode.sh` | launcher vs. clone mode, per instance |
 | `personal-launcher.sh` | ~1 MB launcher app for the stock personal profile |
 | `url-handler.swift` | reads and sets a scheme's default app via LaunchServices |
 | `render-icon.swift` | tints and badges an `.iconset` (CoreImage + AppKit) |
@@ -186,9 +262,11 @@ and `~/.claude`.
 Every command is safe to run repeatedly; none of them needs a clean starting
 state.
 
-- `claude-rebuild` deletes the old clone and re-clones from the pristine
-  `Claude.app` every time, so a rebuild is a fresh build, never a patch on top of
-  a patch. The profile directories are created if missing and never overwritten.
+- `claude-rebuild` deletes the old app and builds again from scratch every time —
+  re-cloning from the pristine `Claude.app` in clone mode, or writing a fresh
+  launcher in launcher mode — so a rebuild is never a patch on top of a patch. The
+  profile directories are created if missing and never overwritten, which is why
+  an instance keeps its login, history and mode across rebuilds.
 - `claude-icon` and the icon step of a rebuild always render from the untouched
   `Claude.app` icon, so re-running never compounds a tint or a badge.
 - `claude-sync` regenerates all of its commands from `instances.conf` and prunes
@@ -205,15 +283,17 @@ state.
 
 ## Updating
 
-`Claude.app` auto-updates itself; clones cannot, because they are ad-hoc signed
-copies. Let the original update first, then:
+`Claude.app` auto-updates itself. Launcher instances inherit that for free —
+they run the original binary, so they are current the moment it is. Clones cannot,
+being ad-hoc signed copies, so they are rebuilt when their version drifts.
 
 ```bash
 claude-update-all
 ```
 
-It compares each app's `CFBundleShortVersionString` against the original's and
-rebuilds only what has drifted.
+It compares each clone's `CFBundleShortVersionString` against the original's and
+rebuilds only what has drifted, reporting launchers as *nothing to rebuild*. If
+every instance is a launcher, this only has the CLI left to do.
 
 Three things update on independent schedules:
 
@@ -221,7 +301,8 @@ Three things update on independent schedules:
    differs between `claude` and `claude-<slug>`; the binary is the same, so it is
    updated once. If Homebrew owns it, `claude-update-all` upgrades it; otherwise
    it tells you the command for your install method rather than guessing.
-2. **Desktop app bundles** — the original auto-updates, clones are rebuilt.
+2. **Desktop app bundles** — the original auto-updates, launchers follow it
+   automatically, clones are rebuilt.
 3. **claude-code inside each desktop app** — lives in that app's user-data-dir and
    self-updates. A rebuild replaces only the `.app` bundle, so these survive it.
    They often run *ahead* of the CLI install.
@@ -259,106 +340,17 @@ Each of these cost real debugging time. Do not remove the workarounds.
   later command fails with `command not found`. `safe_rm` uses `target`.
 - **Unmatched globs abort a zsh script.** `for f in dir/*` is fatal when nothing
   matches — the fresh-machine case. The loops here use the `(N)` qualifier.
+- **A launcher-mode process does not carry its own bundle path.** It runs as
+  `/Applications/Claude.app/Contents/MacOS/Claude`, so `pkill -f "<the instance
+  bundle>"` never matches it — a rebuild left the old process alive and the next
+  launch put two processes on one profile. Match `--user-data-dir=` instead.
 - **PlistBuddy talks on stdout.** A missing file or key produces
   `File Doesn't Exist, Will Create...` on *stdout*, which silently becomes your
   captured value. `bundle_version` checks the file first and discards the output.
 
-## What ad-hoc signing costs you
-
-A clone is re-signed ad hoc, and an ad-hoc signature carries **no entitlements at
-all** — the original is signed by Anthropic with `keychain-access-groups`,
-`application-identifier` and a team identifier that only they can claim. Apple's
-provisioning is what makes those valid, so no amount of re-signing here can
-restore them, and there is no macOS setting that grants them: this is a property
-of the binary's signature, not a permission you approve.
-
-What actually breaks in a clone:
-
-- **Linking a remote session to this computer.** The app logs
-  `remote_cowork.device_register_miss {"reason":"unavailable_entitlement"}` and
-  the session shows *"Couldn't link this session to a computer, so attached
-  folders can't be used."* Local sessions started in the app are unaffected.
-- **Microsoft SSO and WebAuthn**, which need the keychain access group.
-
-The escape hatch is to run the *original* signed binary against an instance's
-profile. Same config dir, same login, same history — only the executable differs,
-so the entitlements are intact. Either keep clicking the same Dock icon:
-
-```bash
-claude-signed            # show every instance's mode
-claude-signed xpt on     # that icon now launches /Applications/Claude.app
-claude-signed xpt off    # back to the clone's own binary
-```
-
-or start it from the terminal for one session:
-
-```bash
-claude-xpt-signed
-```
-
-The switch is a marker file in the instance's config dir, read by the launcher
-inside the app bundle, so flipping it needs no rebuild and no re-signing. The
-config dir survives rebuilds, so an instance keeps its mode across updates.
-
-**A signed-mode instance does not need a copy of the app.** Rebuild one and you
-get a launcher of about 1 MB instead of an 877 MB clone — the bundle exists only
-to carry the icon and exec the original binary:
-
-```bash
-claude-signed xpt on && claude-rebuild xpt    # 877 MB -> ~1 MB
-```
-
-It also stops going stale: a launcher always runs whatever `Claude.app` currently
-is, so `claude-update-all` reports it as *launcher — nothing to rebuild* and skips
-it. Switching back to clone mode needs a real rebuild, and `claude-signed` says so.
-
-To build every *new* instance in signed mode on a machine, export
-`CLAUDE_APPS_DEFAULT_MODE=signed`. It only ever applies to an instance that has
-no mode yet, so a rebuild never silently changes which binary you launch.
-
-Clone mode remains the default because signed mode costs the running icon and
-collides with launching the personal `Claude.app`. Pick per instance: signed
-where you need remote sessions or Microsoft SSO, clone where telling instances
-apart at a glance matters more. An app
-built before the switch existed ignores it — `claude-signed` says so and tells you
-to run `claude-rebuild <slug>` once.
-
-The cost is cosmetic, and it is worth being precise about it: **launching** still
-works from the tinted icon, but the running process belongs to `Claude.app`.
-LaunchServices registers it as plain "Claude", so the Dock and the app switcher
-show the untinted icon while it runs, and two instances in signed mode look alike.
-
-One profile, one process: quit the instance before starting it the other way, as
-Electron locks the user-data dir.
-
-Signed-mode instances **do** run side by side with each other — verified with two
-at once, each on its own profile. The one collision is the personal
-`/Applications/Claude.app` itself: launching it by its own icon while an instance
-holds that bundle's registration ends *both* processes (two `beforeQuit`
-sequences in the log, and you are left with neither). Clone-mode instances are
-unaffected and coexist with everything, as before.
-
-The fix is to stop launching `Claude.app` directly and give the personal profile a
-launcher of its own:
-
-```bash
-claude-personal          # builds "Claude ME.app"; claude-personal XYZ to name it
-```
-
-That is a launcher, not a clone — about 1 MB, no copy of the app, nothing large to
-re-sign. It runs the original signed binary with the **stock** profile, so it opens
-the same personal account, history and logins as `Claude.app` always did
-(`~/.claude` and `~/Library/Application Support/Claude`, untouched). Because it is
-its own bundle, it does not collide: verified running alongside two signed
-instances at once.
-
-Put it in the Dock and take the original `Claude.app` out, so there is nothing
-left to click that collides. Delete it with `rm -rf "/Applications/Claude ME.app"` —
-it is not an instance, so `claude-remove` does not manage it.
-
 ## What is not isolated
 
-The wrapper isolates the config dir and the Electron user-data dir. Two things
+The launcher isolates the config dir and the Electron user-data dir. Two things
 it does not reach:
 
 - **`~/Library/Logs/Claude`** is shared by every instance. Electron derives the
@@ -369,7 +361,8 @@ it does not reach:
   [Which Claude opens a link](#which-claude-opens-a-link).
 
 Per-bundle-id state (preferences, caches, cookies) *is* separate, because each
-clone gets its own `CFBundleIdentifier`. `claude-remove --purge` cleans it up.
+instance gets its own `CFBundleIdentifier` in either mode. `claude-remove --purge`
+cleans it up.
 
 ## Do not run Claude from `$HOME`
 
