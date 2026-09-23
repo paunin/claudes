@@ -128,6 +128,12 @@ It prints exactly what it will delete, with sizes, and asks you to type the slug
 back before touching anything (`--yes` skips the prompt for scripts). There is no
 need to edit `instances.conf` first — it removes the row for you.
 
+`--purge` also takes the per-bundle-id state macOS keeps outside both: the
+preferences plist, the two `Caches` directories and `HTTPStorages` (cookies).
+Deleting only the app leaves those behind under a bundle id nothing will ever
+claim again. `defaults delete` runs first, because `cfprefsd` caches preferences
+in memory and would otherwise rewrite the plist after it is deleted.
+
 Without `--purge` the two profile directories survive, so re-adding the row and
 running `claude-rebuild <slug>` picks up the same logins and history. `--purge`
 deletes `~/.claude-<slug>` and the Electron user-data dir: chat history, settings
@@ -249,6 +255,21 @@ Each of these cost real debugging time. Do not remove the workarounds.
 - **PlistBuddy talks on stdout.** A missing file or key produces
   `File Doesn't Exist, Will Create...` on *stdout*, which silently becomes your
   captured value. `bundle_version` checks the file first and discards the output.
+
+## What is not isolated
+
+The wrapper isolates the config dir and the Electron user-data dir. Two things
+it does not reach:
+
+- **`~/Library/Logs/Claude`** is shared by every instance. Electron derives the
+  log path from the application name it was built with, not from the bundle or
+  the user-data dir, so all instances interleave into one `main.log`. Useful to
+  know when reading logs; harmless otherwise.
+- **The `claude://` URL scheme**, which has one system-wide handler — see
+  [Which Claude opens a link](#which-claude-opens-a-link).
+
+Per-bundle-id state (preferences, caches, cookies) *is* separate, because each
+clone gets its own `CFBundleIdentifier`. `claude-remove --purge` cleans it up.
 
 ## Do not run Claude from `$HOME`
 

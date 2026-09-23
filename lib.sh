@@ -141,6 +141,19 @@ conf_remove_slug() {
   ' "$CONF" > "$tmp" && mv "$tmp" "$CONF"
 }
 
+# macOS scatters per-bundle-id state well outside the app and the data dir.
+# Deleting a clone without these leaves preference, cache and cookie stores
+# behind under a bundle id nothing will ever claim again.
+system_state_paths() {
+  local id; id="$(bundle_id "$1")"
+  print -r -- "$HOME/Library/Preferences/$id.plist"
+  print -r -- "$HOME/Library/Caches/$id"
+  print -r -- "$HOME/Library/Caches/$id.ShipIt"
+  print -r -- "$HOME/Library/HTTPStorages/$id"
+  print -r -- "$HOME/Library/WebKit/$id"
+  print -r -- "$HOME/Library/Saved Application State/$id.savedState"
+}
+
 # rm -rf that refuses the obvious catastrophes: empty, /, $HOME, the personal
 # profile. Everything this tooling deletes goes through here.
 safe_rm() {

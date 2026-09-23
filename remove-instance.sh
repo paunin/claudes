@@ -68,15 +68,20 @@ found=0
 [[ -n "$APP"  && -d "$APP"  ]] && { print "  app      $APP  ($(size "$APP"))"; found=1 }
 for c in "${CMDS[@]}"; do print "  command  $c"; found=1; done
 (( IN_CONF )) && { print "  config   row '$SLUG' in $CONF"; found=1 }
+typeset -a SYSPATHS
+for pth in ${(f)"$(system_state_paths "$SLUG")"}; do [[ -e "$pth" ]] && SYSPATHS+=("$pth"); done
+
 if (( PURGE )); then
   [[ -d "$CFG" ]]                  && { print "  profile  $CFG  ($(size "$CFG"))"; found=1 }
   [[ -n "$DATA" && -d "$DATA" ]]   && { print "  profile  $DATA  ($(size "$DATA"))"; found=1 }
+  for pth in "${SYSPATHS[@]}"; do print "  system   $pth  ($(size "$pth"))"; found=1; done
 fi
 (( found )) || { print "  (nothing - already removed)"; exit 0 }
 
 if (( ! PURGE )); then
   print
   print "keeping (pass --purge to delete these too):"
+  for pth in "${SYSPATHS[@]}"; do print "  ${pth/#$HOME/~}"; done
   [[ -d "$CFG" ]]                && print "  $CFG  ($(size "$CFG"))"
   [[ -n "$DATA" && -d "$DATA" ]] && print "  $DATA  ($(size "$DATA"))"
   [[ -d "$CFG" || ( -n "$DATA" && -d "$DATA" ) ]] || print "  (no profile data on disk)"
@@ -109,6 +114,13 @@ fi
 if (( PURGE )); then
   [[ -d "$CFG" ]]                && { print "==> rm $CFG";  safe_rm "$CFG" }
   [[ -n "$DATA" && -d "$DATA" ]] && { print "==> rm $DATA"; safe_rm "$DATA" }
+  if (( ${#SYSPATHS} )); then
+    print "==> per-bundle-id state (preferences, caches, cookies)"
+    # cfprefsd caches preferences in memory and will rewrite the plist on exit,
+    # so ask it to forget the domain before deleting the file.
+    defaults delete "$(bundle_id "$SLUG")" 2>/dev/null || true
+    for pth in "${SYSPATHS[@]}"; do print "    rm ${pth/#$HOME/~}"; safe_rm "$pth"; done
+  fi
 fi
 
 # Keeping the profile means a later --purge still has to find the data dir.
