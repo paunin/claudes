@@ -27,7 +27,12 @@ for slug in "${INSTANCE_SLUGS[@]}"; do
   write_stamp "$slug" "${INSTANCE_LABEL[$slug]}"
   gen "claude-$slug"     "CLAUDE_CONFIG_DIR=\"$(config_dir "$slug")\" exec claude \"\$@\""
   gen "claude-$slug-app" "exec open -a \"Claude ${INSTANCE_LABEL[$slug]}\" \"\$@\""
-  keep[claude-$slug]=1; keep[claude-$slug-app]=1
+  # Same profile, but run by the original Anthropic-signed binary instead of
+  # the ad-hoc signed clone, so entitlements survive. See README, "What
+  # ad-hoc signing costs you". Quit the clone first - one profile, one process.
+  gen "claude-$slug-signed" \
+    "CLAUDE_CONFIG_DIR=\"$(config_dir "$slug")\" exec \"$MAIN_APP/Contents/MacOS/Claude\" --user-data-dir=\"$(data_dir "$slug")\" \"\$@\""
+  keep[claude-$slug]=1; keep[claude-$slug-app]=1; keep[claude-$slug-signed]=1
 done
 
 print "==> shared commands"

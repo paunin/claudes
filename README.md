@@ -95,6 +95,7 @@ Generated into `~/.local/bin` by `claude-sync`.
 | `claude-instances` | list every instance and its current state |
 | `claude-<slug>` | run the CLI under that instance's config dir |
 | `claude-<slug>-app` | open that instance's desktop app |
+| `claude-<slug>-signed` | open that profile with the original signed `Claude.app` |
 | `claude-update-all` | update the CLI, rebuild stale apps (`--check`, `--force`) |
 | `claude-rebuild <slug> [hue]` | rebuild one app from the current `Claude.app` |
 | `claude-icon <slug> [hue]` | re-skin an app without a full rebuild |
@@ -255,6 +256,39 @@ Each of these cost real debugging time. Do not remove the workarounds.
 - **PlistBuddy talks on stdout.** A missing file or key produces
   `File Doesn't Exist, Will Create...` on *stdout*, which silently becomes your
   captured value. `bundle_version` checks the file first and discards the output.
+
+## What ad-hoc signing costs you
+
+A clone is re-signed ad hoc, and an ad-hoc signature carries **no entitlements at
+all** — the original is signed by Anthropic with `keychain-access-groups`,
+`application-identifier` and a team identifier that only they can claim. Apple's
+provisioning is what makes those valid, so no amount of re-signing here can
+restore them, and there is no macOS setting that grants them: this is a property
+of the binary's signature, not a permission you approve.
+
+What actually breaks in a clone:
+
+- **Linking a remote session to this computer.** The app logs
+  `remote_cowork.device_register_miss {"reason":"unavailable_entitlement"}` and
+  the session shows *"Couldn't link this session to a computer, so attached
+  folders can't be used."* Local sessions started in the app are unaffected.
+- **Microsoft SSO and WebAuthn**, which need the keychain access group.
+
+The escape hatch is to run the *original* signed binary against an instance's
+profile. Same config dir, same login, same history — only the executable differs,
+so the entitlements are intact:
+
+```bash
+claude-xpt-signed        # that profile, run by /Applications/Claude.app
+```
+
+The cost is cosmetic: the process belongs to `Claude.app`, so it shows up in the
+Dock and the app switcher as plain "Claude" with the untinted icon. Use the clone
+when you want to tell instances apart at a glance, and this when you need a
+feature the entitlements gate.
+
+Quit the clone first. One profile can only be open in one process — Electron
+locks the user-data dir.
 
 ## What is not isolated
 
