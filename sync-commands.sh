@@ -42,6 +42,7 @@ for pair in \
   "claude-icon:set-claude-icon.sh" \
   "claude-default:set-default-handler.sh" \
   "claude-signed:set-binary-mode.sh" \
+  "claude-personal:personal-launcher.sh" \
   "claude-update-all:update-all.sh" \
   "claude-instances:list-instances.sh" \
   "claude-remove:remove-instance.sh" \

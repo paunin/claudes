@@ -102,6 +102,7 @@ Generated into `~/.local/bin` by `claude-sync`.
 | `claude-icon <slug> [hue]` | re-skin an app without a full rebuild |
 | `claude-default [slug]` | choose which Claude opens `claude://` links |
 | `claude-signed [slug on\|off]` | run an instance with the original signed binary |
+| `claude-personal [label]` | build a Dock launcher for the personal profile |
 | `claude-remove <slug>` | remove an instance: app, commands, config row (`--purge`) |
 | `claude-sync` | regenerate the commands after editing `instances.conf` |
 
@@ -170,6 +171,7 @@ and `~/.claude`.
 | `set-claude-icon.sh` | icon only; much faster than a full rebuild |
 | `set-default-handler.sh` | pick the app that opens `claude://` links |
 | `set-binary-mode.sh` | clone binary vs. the original signed one, per instance |
+| `personal-launcher.sh` | ~1 MB launcher app for the stock personal profile |
 | `url-handler.swift` | reads and sets a scheme's default app via LaunchServices |
 | `render-icon.swift` | tints and badges an `.iconset` (CoreImage + AppKit) |
 | `update-all.sh` | the three update tracks, in order |
@@ -323,8 +325,23 @@ holds that bundle's registration ends *both* processes (two `beforeQuit`
 sequences in the log, and you are left with neither). Clone-mode instances are
 unaffected and coexist with everything, as before.
 
-If you want the personal profile alongside signed instances, give it an instance
-row of its own rather than launching `Claude.app` directly.
+The fix is to stop launching `Claude.app` directly and give the personal profile a
+launcher of its own:
+
+```bash
+claude-personal          # builds "Claude ME.app"; claude-personal XYZ to name it
+```
+
+That is a launcher, not a clone — about 1 MB, no copy of the app, nothing large to
+re-sign. It runs the original signed binary with the **stock** profile, so it opens
+the same personal account, history and logins as `Claude.app` always did
+(`~/.claude` and `~/Library/Application Support/Claude`, untouched). Because it is
+its own bundle, it does not collide: verified running alongside two signed
+instances at once.
+
+Put it in the Dock and take the original `Claude.app` out, so there is nothing
+left to click that collides. Delete it with `rm -rf "/Applications/Claude ME.app"` —
+it is not an instance, so `claude-remove` does not manage it.
 
 ## What is not isolated
 
