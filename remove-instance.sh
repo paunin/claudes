@@ -71,6 +71,14 @@ for c in "${CMDS[@]}"; do print "  command  $c"; found=1; done
 typeset -a SYSPATHS
 for pth in ${(f)"$(system_state_paths "$SLUG")"}; do [[ -e "$pth" ]] && SYSPATHS+=("$pth"); done
 
+# Purging personal would mean deleting ~/.claude and the stock Electron profile -
+# the account itself, not a copy of it.
+if (( PURGE )) && is_personal "$SLUG"; then
+  die "'$SLUG' is the personal profile: --purge would delete ~/.claude and
+    ~/Library/Application Support/Claude, which are not this tooling's to remove.
+    Drop --purge to remove just the app and its command."
+fi
+
 if (( PURGE )); then
   [[ -d "$CFG" ]]                  && { print "  profile  $CFG  ($(size "$CFG"))"; found=1 }
   [[ -n "$DATA" && -d "$DATA" ]]   && { print "  profile  $DATA  ($(size "$DATA"))"; found=1 }

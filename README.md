@@ -81,7 +81,7 @@ starts, and that turns out to decide which features work.
 | Microsoft SSO, WebAuthn | work | fail |
 | Goes stale when Claude updates | never | needs `claude-rebuild` |
 | Icon while running | plain "Claude" | tinted and badged |
-| Personal `Claude.app` can be open too | only via `claude-personal` | yes |
+| Personal `Claude.app` can be open too | via a `personal` instance | yes |
 
 ```bash
 claude-signed                  # show every instance's mode
@@ -117,24 +117,30 @@ ends *both* processes. Hence the next section.
 
 ## The personal profile
 
-The stock profile — `~/.claude` and `~/Library/Application Support/Claude` — is
-never touched by this tooling. But once any instance runs in launcher mode, the
-original `Claude.app` icon is the one thing you must stop clicking. Give the
-personal profile a launcher of its own instead:
+The personal profile is an ordinary instance with a reserved slug. Give it a row:
 
-```bash
-claude-personal          # builds "Claude ME.app"; claude-personal XYZ to name it
+```
+# slug    label  hue  note
+personal  ME     100  stock ~/.claude profile
 ```
 
-About 1 MB, no clone, nothing large to re-sign. It runs the original binary with
-**no** profile flags, so it opens the same personal account, history and logins as
-`Claude.app` always did. Being its own bundle, it does not collide — verified
-running alongside two launcher instances at once.
+and `claude-install` builds it like any other. What the reserved slug changes is
+only *where* the profile lives: `personal` uses the stock locations — `~/.claude`
+and `~/Library/Application Support/Claude` — so it opens the same account,
+history and logins `Claude.app` itself does, rather than a fresh profile. It is
+always built as a launcher, since a clone of it could not carry the entitlements
+and would fight `Claude.app` over the same profile.
 
-Put it in the Dock and take the original `Claude.app` out, so nothing is left to
-click that collides. Remove it with `rm -rf "/Applications/Claude ME.app"`; it is
-not an instance, so `claude-remove` does not manage it and `claude-update-all`
-does not count it as an orphan.
+There is no special command for it: `claude-personal`, `claude-personal-app` and
+`claude-rebuild personal` are the same generated commands every instance gets.
+
+Once any instance runs in launcher mode, the original `Claude.app` icon is the
+one thing to stop clicking — it collides. Put "Claude ME" in the Dock and take
+`Claude.app` out.
+
+`claude-remove personal --purge` is refused: that would delete `~/.claude` and the
+stock profile, which are the account itself rather than a copy of it. Without
+`--purge` it removes just the app and its commands, as usual.
 
 ## Which Claude opens a link
 
@@ -154,8 +160,20 @@ claude-default personal  # send them back to /Applications/Claude.app
 Point it at an instance *before* signing into that instance, then put it back if
 you like. The switch is immediate and needs no restart.
 
-A rebuild re-registers the bundle with LaunchServices, so check with
-`claude-default` afterwards if links start landing in the wrong app.
+Each instance also claims a scheme of its own, so a link can name its target
+instead of depending on the default:
+
+```bash
+open "claude-rsg://..."        # always that instance, whatever the default is
+```
+
+Both are declared in the bundle, so they exist after a rebuild — but a rebuild
+re-registers with LaunchServices, so check `claude-default` afterwards if links
+start landing in the wrong app.
+
+A launcher built before this existed has no `CFBundleURLTypes` at all, which
+makes it invisible to `claude-default`: every `claude://` link then falls back to
+`Claude.app`. `claude-rebuild <slug>` fixes it.
 
 The same collision applies to `msauth.com.anthropic.claudefordesktop`, the
 Microsoft SSO callback scheme. It is moot for a clone, which cannot do Microsoft
@@ -178,7 +196,6 @@ Generated into `~/.local/bin` by `claude-sync`.
 | `claude-icon <slug> [hue]` | re-skin an app without a full rebuild |
 | `claude-default [slug]` | choose which Claude opens `claude://` links |
 | `claude-signed [slug on\|off]` | switch an instance between launcher and clone mode |
-| `claude-personal [label]` | build a Dock launcher for the personal profile |
 | `claude-remove <slug>` | remove an instance: app, commands, config row (`--purge`) |
 | `claude-sync` | regenerate the commands after editing `instances.conf` |
 
@@ -247,7 +264,6 @@ and `~/.claude`.
 | `set-claude-icon.sh` | icon only; much faster than a full rebuild |
 | `set-default-handler.sh` | pick the app that opens `claude://` links |
 | `set-binary-mode.sh` | launcher vs. clone mode, per instance |
-| `personal-launcher.sh` | ~1 MB launcher app for the stock personal profile |
 | `url-handler.swift` | reads and sets a scheme's default app via LaunchServices |
 | `render-icon.swift` | tints and badges an `.iconset` (CoreImage + AppKit) |
 | `update-all.sh` | the three update tracks, in order |

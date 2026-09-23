@@ -24,6 +24,7 @@ if [[ $# -eq 0 ]]; then
   printf "%-6s %-8s %s\n" ------ -------- --------
   for slug in "${INSTANCE_SLUGS[@]}"; do
     m="$(mode_of "$slug")"
+    is_personal "$slug" && m="launcher"
     if [[ "$m" == "signed" ]]; then t="$MAIN_APP/Contents/MacOS/Claude"; else t="$(app_path "$slug") (own binary)"; fi
     printf "%-6s %-8s %s\n" "$slug" "$m" "$t"
     supported "$slug" || print "       ^ app predates this switch - run: claude-rebuild $slug"
@@ -35,6 +36,8 @@ fi
 
 [[ $# -ge 2 ]] || die "usage: ${0:t} <slug> on|off   (slugs: ${INSTANCE_SLUGS[*]})"
 ORG="$(require_instance "$1")"
+is_personal "$ORG" && die "'$ORG' is always a launcher - a clone of the personal
+    profile could not carry the entitlements, and would fight Claude.app for it"
 CFG="$(config_dir "$ORG")"
 mkdir -p "$CFG"
 

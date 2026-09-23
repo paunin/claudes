@@ -26,18 +26,29 @@ mkdir -p "$CFG"
 # Signed mode does not need a copy of the app at all - the bundle exists only to
 # carry an icon and exec the original binary. Build a launcher instead: ~1 MB
 # rather than ~877 MB, and it never goes stale when Claude.app updates itself.
-if [[ -f "$CFG/.use-signed-binary" ]] \
+# The personal instance is always a launcher: a clone of it could not carry the
+# entitlements, and it would fight the real Claude.app for the same profile.
+if is_personal "$ORG" \
+   || [[ -f "$CFG/.use-signed-binary" ]] \
    || [[ "$DEFAULT_MODE" == "signed" && ! -f "$CFG/.mode-chosen" ]]; then
   print "==> building 'Claude ${LABEL}' as a launcher  (signed mode, config=$CFG)"
   # In signed mode the process is /Applications/Claude.app/..., so a pattern
   # built from this bundle's path never matches it. The user-data-dir does.
   pkill -f "${DST:t}/Contents/MacOS/" 2>/dev/null || true
   pkill -f -- "--user-data-dir=$DATA" 2>/dev/null || true
+  # Personal has one more shape to catch: the binary running with no flags at
+  # all - Claude.app opened directly, or an older launcher that passed none.
+  # Same profile, so leaving it alive means two processes on one profile.
+  is_personal "$ORG" && { pkill -fx "$MAIN_APP/Contents/MacOS/Claude" 2>/dev/null || true }
   sleep 2
-  : > "$CFG/.use-signed-binary"; : > "$CFG/.mode-chosen"
+  # No mode markers or stamp in the personal config dir - that is the user's own
+  # ~/.claude, not ours to litter, and personal has no mode to choose.
+  if ! is_personal "$ORG"; then
+    : > "$CFG/.use-signed-binary"; : > "$CFG/.mode-chosen"
+    write_stamp "$ORG" "$LABEL"
+  fi
   mkdir -p "$DATA"
-  write_stamp "$ORG" "$LABEL"
-  make_launcher "$DST" "$(bundle_id "$ORG")" "$LABEL" "$HUE" "$CFG" "$DATA"
+  make_launcher "$DST" "$(bundle_id "$ORG")" "$LABEL" "$HUE" "$CFG" "$DATA" "claude-$ORG"
   killall Dock 2>/dev/null || true
   print "done -> $DST  ($(du -sh "$DST" | cut -f1), runs $MAIN_APP)"
   exit 0

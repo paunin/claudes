@@ -27,6 +27,13 @@
 # After editing run:  claude-sync
 # then `claude-rebuild <slug>` for any instance whose app does not exist yet.
 #
+# The slug `personal` is reserved: that instance uses the stock profile
+# (~/.claude and ~/Library/Application Support/Claude), so it opens the same
+# account Claude.app itself does, and it is always built as a launcher. Give it
+# a row and launch it from its own icon rather than from Claude.app, which
+# collides with launcher instances.
+#
 # slug  label  hue  note
 acme    ACME   72   Acme Corp
 beta    BTA    200  Beta Industries
+personal ME     100  stock ~/.claude profile (hue 100 = Claude orange, untinted)
