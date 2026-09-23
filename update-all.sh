@@ -78,6 +78,10 @@ done
 for APP in "${CLAUDE_APPS_DIR:-/Applications}"/Claude\ *.app(N); do
   [[ -f "$APP/Contents/MacOS/Claude.real" || -x "$APP/Contents/MacOS/launcher" ]] || continue
   L="${${APP:t:r}#Claude }"
+  # The personal launcher has no instances.conf row by design - it is not an
+  # organisation, it is the stock profile. Not an orphan.
+  [[ "$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Contents/Info.plist" 2>/dev/null)" \
+     == "com.anthropic.claude.personal" ]] && continue
   known=0
   for slug in "${INSTANCE_SLUGS[@]}"; do [[ "${INSTANCE_LABEL[$slug]}" == "$L" ]] && known=1; done
   (( known )) || {

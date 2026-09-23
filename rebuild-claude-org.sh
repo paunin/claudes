@@ -29,8 +29,11 @@ mkdir -p "$CFG"
 if [[ -f "$CFG/.use-signed-binary" ]] \
    || [[ "$DEFAULT_MODE" == "signed" && ! -f "$CFG/.mode-chosen" ]]; then
   print "==> building 'Claude ${LABEL}' as a launcher  (signed mode, config=$CFG)"
+  # In signed mode the process is /Applications/Claude.app/..., so a pattern
+  # built from this bundle's path never matches it. The user-data-dir does.
   pkill -f "${DST:t}/Contents/MacOS/" 2>/dev/null || true
-  sleep 1
+  pkill -f -- "--user-data-dir=$DATA" 2>/dev/null || true
+  sleep 2
   : > "$CFG/.use-signed-binary"; : > "$CFG/.mode-chosen"
   mkdir -p "$DATA"
   write_stamp "$ORG" "$LABEL"
@@ -44,6 +47,7 @@ print "==> building 'Claude ${LABEL}'  (config=$CFG  hue=$HUE)"
 
 print "==> quitting + removing old clone"
 pkill -f "${DST:t}/Contents/MacOS/Claude.real" 2>/dev/null || true
+pkill -f -- "--user-data-dir=$DATA" 2>/dev/null || true   # it may be running in signed mode
 sleep 2
 rm -rf "$DST"
 
