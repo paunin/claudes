@@ -42,7 +42,12 @@ case "${2:l}" in
   on)  : > "$CFG/$MARK"; : > "$CFG/.mode-chosen"
        print "==> $ORG: signed mode - the icon now starts $MAIN_APP" ;;
   off) rm -f "$CFG/$MARK"; : > "$CFG/.mode-chosen"
-       print "==> $ORG: clone mode - the icon starts $(app_path "$ORG")" ;;
+       print "==> $ORG: clone mode - the icon starts $(app_path "$ORG")"
+       if is_launcher "$(app_path "$ORG")"; then
+         print
+         print "That app is a launcher, with no copy of Claude inside it. Clone mode"
+         print "needs the real thing, so build it: claude-rebuild $ORG"
+       fi ;;
   *)   die "expected 'on' or 'off', got '$2'" ;;
 esac
 

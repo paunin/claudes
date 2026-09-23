@@ -59,6 +59,10 @@ for slug in "${INSTANCE_SLUGS[@]}"; do
     fi
     continue
   fi
+  if is_launcher "$APP"; then
+    print "    Claude $LABEL: launcher - always runs ${MAIN_APP:t} ($MAIN), nothing to rebuild"
+    continue
+  fi
   V="$(bundle_version "$APP")"
   if [[ "$V" == "$MAIN" ]] && (( ! FORCE )); then
     print "    Claude $LABEL: $V  - current"
@@ -72,7 +76,7 @@ done
 
 # Clones on disk that instances.conf no longer mentions.
 for APP in "${CLAUDE_APPS_DIR:-/Applications}"/Claude\ *.app(N); do
-  [[ -f "$APP/Contents/MacOS/Claude.real" ]] || continue
+  [[ -f "$APP/Contents/MacOS/Claude.real" || -x "$APP/Contents/MacOS/launcher" ]] || continue
   L="${${APP:t:r}#Claude }"
   known=0
   for slug in "${INSTANCE_SLUGS[@]}"; do [[ "${INSTANCE_LABEL[$slug]}" == "$L" ]] && known=1; done

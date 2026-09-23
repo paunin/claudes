@@ -22,6 +22,24 @@ DATA="$(data_dir "$ORG")"
 CFG="$(config_dir "$ORG")"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
+mkdir -p "$CFG"
+# Signed mode does not need a copy of the app at all - the bundle exists only to
+# carry an icon and exec the original binary. Build a launcher instead: ~1 MB
+# rather than ~877 MB, and it never goes stale when Claude.app updates itself.
+if [[ -f "$CFG/.use-signed-binary" ]] \
+   || [[ "$DEFAULT_MODE" == "signed" && ! -f "$CFG/.mode-chosen" ]]; then
+  print "==> building 'Claude ${LABEL}' as a launcher  (signed mode, config=$CFG)"
+  pkill -f "${DST:t}/Contents/MacOS/" 2>/dev/null || true
+  sleep 1
+  : > "$CFG/.use-signed-binary"; : > "$CFG/.mode-chosen"
+  mkdir -p "$DATA"
+  write_stamp "$ORG" "$LABEL"
+  make_launcher "$DST" "$(bundle_id "$ORG")" "$LABEL" "$HUE" "$CFG" "$DATA"
+  killall Dock 2>/dev/null || true
+  print "done -> $DST  ($(du -sh "$DST" | cut -f1), runs $MAIN_APP)"
+  exit 0
+fi
+
 print "==> building 'Claude ${LABEL}'  (config=$CFG  hue=$HUE)"
 
 print "==> quitting + removing old clone"
@@ -97,10 +115,6 @@ write_stamp "$ORG" "$LABEL"   # lets claude-remove find $DATA after the app is g
 
 # A first build honours the machine's default mode; an instance that already has
 # a mode keeps it, so a rebuild never silently changes which binary you launch.
-if [[ "$DEFAULT_MODE" == "signed" && ! -f "$CFG/.use-signed-binary" && ! -f "$CFG/.mode-chosen" ]]; then
-  : > "$CFG/.use-signed-binary"
-  print "==> default mode: signed (CLAUDE_APPS_DEFAULT_MODE)"
-fi
 : > "$CFG/.mode-chosen"
 touch "$DST"
 lsregister -f "$DST"

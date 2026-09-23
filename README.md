@@ -195,7 +195,8 @@ state.
   the ones it previously generated for instances that are gone. Two consecutive
   runs leave `~/.local/bin` byte-identical.
 - `claude-update-all` rebuilds only apps whose version has drifted from
-  `Claude.app`; when everything matches it changes nothing. `--check` is a pure
+  `Claude.app`, and skips signed-mode launchers entirely, since they have no copy
+  of the app to go stale; when everything matches it changes nothing. `--check` is a pure
   dry run, `--force` rebuilds regardless.
 - `claude-remove` exits 0 with "nothing - already removed" when run again.
 - `claude-install` skips apps that already exist, so re-running it after adding a
@@ -298,6 +299,18 @@ claude-xpt-signed
 The switch is a marker file in the instance's config dir, read by the launcher
 inside the app bundle, so flipping it needs no rebuild and no re-signing. The
 config dir survives rebuilds, so an instance keeps its mode across updates.
+
+**A signed-mode instance does not need a copy of the app.** Rebuild one and you
+get a launcher of about 1 MB instead of an 877 MB clone — the bundle exists only
+to carry the icon and exec the original binary:
+
+```bash
+claude-signed xpt on && claude-rebuild xpt    # 877 MB -> ~1 MB
+```
+
+It also stops going stale: a launcher always runs whatever `Claude.app` currently
+is, so `claude-update-all` reports it as *launcher — nothing to rebuild* and skips
+it. Switching back to clone mode needs a real rebuild, and `claude-signed` says so.
 
 To build every *new* instance in signed mode on a machine, export
 `CLAUDE_APPS_DEFAULT_MODE=signed`. It only ever applies to an instance that has
