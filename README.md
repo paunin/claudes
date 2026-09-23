@@ -305,6 +305,12 @@ show the untinted icon while it runs, and two instances in signed mode look alik
 One profile, one process: quit the instance before starting it the other way, as
 Electron locks the user-data dir.
 
+**A signed-mode instance and the personal `Claude.app` cannot be open at the same
+time.** In signed mode they are the same bundle, so launching the second one ends
+both — the log shows two `beforeQuit` sequences and you are left with neither.
+Quit one before opening the other. This does not affect clone-mode instances,
+which coexist with the personal app and with each other as they always have.
+
 ## What is not isolated
 
 The wrapper isolates the config dir and the Electron user-data dir. Two things
