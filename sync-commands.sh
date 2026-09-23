@@ -35,6 +35,7 @@ for pair in \
   "claude-install:install.sh" \
   "claude-rebuild:rebuild-claude-org.sh" \
   "claude-icon:set-claude-icon.sh" \
+  "claude-default:set-default-handler.sh" \
   "claude-update-all:update-all.sh" \
   "claude-instances:list-instances.sh" \
   "claude-remove:remove-instance.sh" \

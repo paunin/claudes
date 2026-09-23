@@ -60,6 +60,31 @@ Each instance gets two separate things, both set by a wrapper installed at
 Because the wrapper lives inside the bundle, the desktop apps need no shell
 configuration at all. The `~/.local/bin` commands exist only for terminal use.
 
+## Which Claude opens a link
+
+Isolation stops at the bundle. Every clone inherits the `claude` URL scheme from
+the original app, and macOS allows exactly **one** default handler per scheme for
+the whole login session — there is no per-browser, per-profile or per-window
+routing to configure. So a `claude://` link from the browser, including a sign-in
+callback, goes to whichever app is currently the default, no matter which
+instance started the flow.
+
+```bash
+claude-default           # show the current handler and all the candidates
+claude-default <slug>    # send claude:// links to that instance
+claude-default personal  # send them back to /Applications/Claude.app
+```
+
+Point it at an instance *before* signing into that instance, then put it back if
+you like. The switch is immediate and needs no restart.
+
+A rebuild re-registers the bundle with LaunchServices, so check with
+`claude-default` afterwards if links start landing in the wrong app.
+
+The same collision applies to `msauth.com.anthropic.claudefordesktop`, the
+Microsoft SSO callback scheme — but ad-hoc signing already breaks Microsoft SSO
+in the clones, so it is moot there.
+
 ## Commands
 
 Generated into `~/.local/bin` by `claude-sync`.
@@ -73,6 +98,7 @@ Generated into `~/.local/bin` by `claude-sync`.
 | `claude-update-all` | update the CLI, rebuild stale apps (`--check`, `--force`) |
 | `claude-rebuild <slug> [hue]` | rebuild one app from the current `Claude.app` |
 | `claude-icon <slug> [hue]` | re-skin an app without a full rebuild |
+| `claude-default [slug]` | choose which Claude opens `claude://` links |
 | `claude-remove <slug>` | remove an instance: app, commands, config row (`--purge`) |
 | `claude-sync` | regenerate the commands after editing `instances.conf` |
 
@@ -133,6 +159,8 @@ and `~/.claude`.
 | `lib.sh` | config parsing and shared helpers |
 | `rebuild-claude-org.sh` | clone, rebrand, re-sign and re-skin one app |
 | `set-claude-icon.sh` | icon only; much faster than a full rebuild |
+| `set-default-handler.sh` | pick the app that opens `claude://` links |
+| `url-handler.swift` | reads and sets a scheme's default app via LaunchServices |
 | `render-icon.swift` | tints and badges an `.iconset` (CoreImage + AppKit) |
 | `update-all.sh` | the three update tracks, in order |
 | `list-instances.sh` | status table |
